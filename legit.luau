@@ -1,7 +1,7 @@
 local player = game:GetService("Players").LocalPlayer;
 local function generate_random_ms()
     local roll = math.random(1, 100)
-    if roll <= 98 then -- change number if needed (i hope i dont have to explain how ts works)
+    if roll <= 98 then -- change number if needed (i wouldn't recommend to)
         return math.random(-20, 40) -- perfect
     else
         if math.random(1, 2) == 1 then -- great
