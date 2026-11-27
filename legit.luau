@@ -1,7 +1,7 @@
 local player = game:GetService("Players").LocalPlayer;
 local function generate_random_ms()
     local roll = math.random(1, 100)
-    if roll <= 98 then -- change number if needed (i wouldn't recommend to)
+    if roll <= 98 then -- change number if needed (if u found this ofc)
         return math.random(-20, 40) -- perfect
     else
         if math.random(1, 2) == 1 then -- great
@@ -13,15 +13,32 @@ local function generate_random_ms()
 end
 
 local track_system;
-for index, module in next, getloadedmodules() do 
-    local module_value = require(module);
-    if type(module_value) == "table" and rawget(module_value, "new") then 
-        local first_upvalue = getupvalues(module_value.new)[1];
-        if type(first_upvalue) == "table" and rawget(first_upvalue, "twister") then 
-            track_system = module_value; break;
+local deadline = os.clock() + 15
+repeat
+    for _, module in next, getloadedmodules() do
+        local ok, value = pcall(require,module)
+        if ok and type(value) == "table" then
+            local constructor = rawget(value, "new")
+            if type(constructor) == "function" then
+                local success, upvalues = pcall(getupvalues, constructor)
+                local first = success
+                    and type(upvalues) == "table"
+                    and upvalues[1]
+                if type(first) == "table" and rawget(first, "twister") then
+                    track_system = value
+                    break
+                end
+            end
         end
     end
-end
+    if not track_system then
+        task.wait(0.25)
+    end
+until track_system or os.clock() >= deadline
+assert(
+    track_system,
+    "Track system not found: no module matched the lookup"
+)
 
 local function get_track_action_functions(ts)
     local press, release; 
@@ -46,6 +63,7 @@ local function get_local_track_system(session)
             end
         end
     end
+    return nil
 end
 
 local old_new = track_system.new;
@@ -59,6 +77,9 @@ track_system.new = function(...)
                 local notes_table = upvalues[2];
                 track_functions[index] = function(self, slot, session)
                     local local_ts = get_local_track_system(session);
+                    if not local_ts then
+                        return track_function(self,slot,session)
+                    end
                     local press_track, release_track = get_track_action_functions(local_ts);
                     local test_press_name = getconstant(press_track, 10);
                     local test_release_name = getconstant(release_track, 6);
@@ -76,7 +97,7 @@ track_system.new = function(...)
                                 press_track(local_ts, session, note_track_index);
                                 session:debug_any_press();
                                 if rawget(note, "get_time_to_end") then 
-                                    delay(math.random(5, 18) / 100, function()
+                                    task.delay(math.random(5, 18) / 100, function()
                                         release_track(local_ts, session, note_track_index);
                                     end);
                                 end
@@ -84,7 +105,7 @@ track_system.new = function(...)
                             if test_release then 
                                 local released, _, release_delay = test_release(note);
                                 if released and release_delay >= note.__custom_target then 
-                                    delay(math.random(2, 5) / 100, function()
+                                    task.delay(math.random(2, 5) / 100, function()
                                         release_track(local_ts, session, note_track_index);
                                     end);
                                 end
